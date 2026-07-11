@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FALCON — Settings</title>
+<meta name="description" content="FALCON drone Trim and PID tuning settings panel">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & ROOT ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06080d;--surface:#0b0f18;--card:rgba(10,14,26,0.92);
+  --border:rgba(0,255,136,0.1);--border2:rgba(56,189,248,0.1);
+  --glow-g:rgba(0,255,136,0.06);--glow-c:rgba(56,189,248,0.06);
+  --green:#00ff88;--cyan:#00cfff;--accent2:#818cf8;
+  --red:#ff3b5c;--orange:#ff8c00;--yellow:#f5c400;
+  --text:#d0e0e8;--text2:#6a8090;--text3:#3a4a58;
+  --font:'JetBrains Mono',monospace;--font-title:'Orbitron',sans-serif;--font-body:'Inter',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100%;user-select:none;-webkit-user-select:none}
+
+/* Scanline */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.08) 3px,rgba(0,0,0,0.08) 4px)}
+
+/* Ambient glow */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 20% 10%,rgba(0,255,136,0.04),transparent 50%),
+  radial-gradient(ellipse at 80% 90%,rgba(0,207,255,0.03),transparent 50%)}
+
+/* ===== LAYOUT ===== */
+.page{max-width:600px;margin:0 auto;padding:12px;position:relative;z-index:1}
+
+/* ===== HEADER ===== */
+.header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;
+  border:1px solid var(--border);background:var(--card);border-radius:10px;backdrop-filter:blur(16px);margin-bottom:12px}
+.header-left{display:flex;align-items:center;gap:10px}
+.back-btn{padding:6px 14px;border:1px solid var(--cyan);border-radius:6px;background:transparent;
+  color:var(--cyan);cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;
+  letter-spacing:1px;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.back-btn:hover{background:rgba(0,207,255,0.1);box-shadow:0 0 8px rgba(0,207,255,0.15)}
+.header-title{font-family:var(--font-title);font-size:14px;font-weight:900;letter-spacing:3px;color:var(--green);text-shadow:0 0 10px var(--green)}
+
+/* Emergency Stop */
+.btn-stop{padding:6px 14px;background:transparent;border:2px solid var(--red);color:var(--red);
+  font-family:var(--font-title);font-size:9px;font-weight:700;letter-spacing:2px;border-radius:6px;cursor:pointer;
+  text-shadow:0 0 6px var(--red);box-shadow:0 0 8px rgba(255,59,92,0.15);transition:all .12s;white-space:nowrap}
+.btn-stop:active{background:var(--red);color:#000;box-shadow:0 0 20px var(--red)}
+
+/* ===== SECTIONS ===== */
+.section{background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:16px;margin-bottom:12px;backdrop-filter:blur(16px)}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;
+  padding-bottom:10px;border-bottom:1px solid var(--border)}
+.section-title{font-family:var(--font-title);font-size:12px;font-weight:700;letter-spacing:2px;
+  display:flex;align-items:center;gap:8px}
+.section-title .icon{font-size:16px}
+
+/* Reset button */
+.btn-reset{padding:5px 12px;border:1px solid var(--orange);border-radius:5px;background:transparent;
+  color:var(--orange);font-family:var(--font);font-size:9px;font-weight:600;letter-spacing:1px;
+  cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+.btn-reset:hover{background:rgba(255,140,0,0.1);box-shadow:0 0 6px rgba(255,140,0,0.2)}
+.btn-reset:active{transform:scale(0.95)}
+
+/* ===== TUNING ROW ===== */
+.tune-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.tune-row:last-child{border-bottom:none}
+.tune-label{flex:0 0 90px;font-size:11px;letter-spacing:1px;color:var(--text2)}
+.tune-label .motor-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px}
+.tune-label .motor-dot.fl{background:var(--green)}
+.tune-label .motor-dot.fr{background:var(--cyan)}
+.tune-label .motor-dot.bl{background:var(--cyan)}
+.tune-label .motor-dot.br{background:var(--green)}
+.tune-controls{display:flex;align-items:center;gap:6px;flex:1;justify-content:center}
+.tune-val{font-size:18px;font-weight:700;color:var(--cyan);min-width:55px;text-align:center;
+  padding:4px 8px;border:1px solid var(--border2);border-radius:6px;background:rgba(0,0,0,0.3);
+  font-variant-numeric:tabular-nums}
+.tune-val.changed{color:var(--orange);border-color:rgba(255,140,0,0.3);
+  box-shadow:0 0 6px rgba(255,140,0,0.1)}
+.tune-btn{width:36px;height:36px;border:1px solid var(--border);border-radius:6px;
+  background:rgba(0,0,0,0.3);color:var(--text);cursor:pointer;font-size:18px;font-weight:700;
+  font-family:var(--font);display:flex;align-items:center;justify-content:center;transition:all .12s}
+.tune-btn:hover{border-color:var(--green);color:var(--green);background:var(--glow-g)}
+.tune-btn:active{transform:scale(0.9);box-shadow:0 0 8px var(--glow-g)}
+.tune-btn.minus:hover{border-color:var(--red);color:var(--red);background:rgba(255,59,92,0.06)}
+
+/* ===== STATUS BAR ===== */
+.status-bar{display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 16px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;backdrop-filter:blur(16px)}
+.status-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)}
+.status-item .val{color:var(--cyan);font-weight:600}
+.status-dot{width:6px;height:6px;border-radius:50%}
+.status-dot.on{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 1.2s infinite}
+.status-dot.off{background:var(--red);box-shadow:0 0 6px var(--red)}
+@keyframes blink{50%{opacity:.3}}
+
+/* ===== PID Section Colors ===== */
+.pid-section .section-title{color:var(--accent2)}
+.pid-section .section-header{border-bottom-color:rgba(129,140,248,0.15)}
+.pid-section{border-color:rgba(129,140,248,0.12)}
+.pid-section .tune-val{color:var(--accent2);border-color:rgba(129,140,248,0.15)}
+.pid-section .tune-val.changed{color:var(--orange);border-color:rgba(255,140,0,0.3)}
+.pid-section .tune-btn:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(129,140,248,0.06)}
+
+/* ===== INFO ===== */
+.info-box{padding:10px 14px;border-radius:8px;font-size:10px;line-height:1.6;color:var(--text2);
+  background:rgba(0,255,136,0.03);border:1px solid rgba(0,255,136,0.08);margin-top:12px;
+  font-family:var(--font-body);letter-spacing:0.3px}
+.info-box b{color:var(--green)}
+.info-box.warn{background:rgba(255,140,0,0.03);border-color:rgba(255,140,0,0.1)}
+.info-box.warn b{color:var(--orange)}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:500px){
+  .page{padding:8px}
+  .tune-label{flex:0 0 70px;font-size:10px}
+  .tune-val{font-size:15px;min-width:45px}
+  .tune-btn{width:32px;height:32px;font-size:16px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <a href="/" class="back-btn" id="backBtn">← BACK</a>
+      <span class="header-title">⚙ SETTINGS</span>
+    </div>
+    <button class="btn-stop" onmousedown="cmd('stop')" ontouchstart="cmd('stop')">⚡ STOP</button>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" style="margin-bottom:12px">
+    <div class="status-item"><span class="status-dot off" id="dotDrone"></span> DRONE</div>
+    <div class="status-item">PITCH <span class="val" id="vPitch">0.0</span></div>
+    <div class="status-item">ROLL <span class="val" id="vRoll">0.0</span></div>
+    <div class="status-item">THR <span class="val" id="vThr">1000</span></div>
+  </div>
+
+  <!-- ===== TRIM SECTION ===== -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title" style="color:var(--yellow)">
+        <span class="icon">🎛️</span> MOTOR TRIM
+      </div>
+      <button class="btn-reset" onclick="cmd('trim_reset')">↺ RESET ALL</button>
+    </div>
+
+    <!-- FL -->
+    <div class="tune-row">
+      <div class="tune-label"><span class="motor-dot fl"></span>FL (M1)</div>
+      <div class="tune-controls">
+        <button class="tune-btn minus" onmousedown="cmd('trim_1_down')" ontouchstart="cmd('trim_1_down')">−</button>
+        <div class="tune-val" id="trim1">0</div>
+        <button class="tune-btn" onmousedown="cmd('trim_1_up')" ontouchstart="cmd('trim_1_up')">+</button>
+      </div>
+    </div>
+
+    <!-- FR -->
+    <div class="tune-row">
+      <div class="tune-label"><span class="motor-dot fr"></span>FR (M2)</div>
+      <div class="tune-controls">
+        <button class="tune-btn minus" onmousedown="cmd('trim_2_down')" ontouchstart="cmd('trim_2_down')">−</button>
+        <div class="tune-val" id="trim2">0</div>
+        <button class="tune-btn" onmousedown="cmd('trim_2_up')" ontouchstart="cmd('trim_2_up')">+</button>
+      </div>
+    </div>
+
+    <!-- BL -->
+    <div class="tune-row">
+      <div class="tune-label"><span class="motor-dot bl"></span>BL (M3)</div>
+      <div class="tune-controls">
+        <button class="tune-btn minus" onmousedown="cmd('trim_3_down')" ontouchstart="cmd('trim_3_down')">−</button>
+        <div class="tune-val" id="trim3">0</div>
+        <button class="tune-btn" onmousedown="cmd('trim_3_up')" ontouchstart="cmd('trim_3_up')">+</button>
+      </div>
+    </div>
+
+    <!-- BR -->
+    <div class="tune-row">
+      <div class="tune-label"><span class="motor-dot br"></span>BR (M4)</div>
+      <div class="tune-controls">
+        <button class="tune-btn minus" onmousedown="cmd('trim_4_down')" ontouchstart="cmd('trim_4_down')">−</button>
+        <div class="tune-val" id="trim4">0</div>
+        <button class="tune-btn" onmousedown="cmd('trim_4_up')" ontouchstart="cmd('trim_4_up')">+</button>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <b>Trim</b> adjusts individual motor power (±5 per click).<br>
+      If the drone drifts to one side, increase trim on the opposite motors.
+    </div>
+  </div>
+
+  <!-- ===== PID SECTION ===== -->
+  <div class="section pid-section">
+    <div class="section-header">
+      <div class="section-title">
+        <span class="icon">🎚️</span> PID TUNING
+      </div>
+      <button class="btn-reset" onclick="cmd('pid_reset')">↺ DEFAULTS</button>
+    </div>
+
+    <!-- Kp -->
+    <div class="tune-row">
+      <div class="tune-label">Kp</div>
+      <div class="tune-controls">
+        <button class="tune-btn minus" onmousedown="cmd('kp_down')" ontouchstart="cmd('kp_down')">−</button>
+        <div class="tune-val" id="pidKp">0.80</div>
+        <button class="tune-btn" onmousedown="cmd('kp_up')" ontouchstart="cmd('kp_up')">+</button>
+      </div>
+    </div>
+
+    <!-- Kd -->
+    <div class="tune-row">
+      <div class="tune-label">Kd</div>
+      <div class="tune-controls">
+        <button class="tune-btn minus" onmousedown="cmd('kd_down')" ontouchstart="cmd('kd_down')">−</button>
+        <div class="tune-val" id="pidKd">0.0050</div>
+        <button class="tune-btn" onmousedown="cmd('kd_up')" ontouchstart="cmd('kd_up')">+</button>
+      </div>
+    </div>
+
+    <!-- Kp Yaw -->
+    <div class="tune-row">
+      <div class="tune-label">Kp Yaw</div>
+      <div class="tune-controls">
+        <button class="tune-btn minus" onmousedown="cmd('kp_yaw_down')" ontouchstart="cmd('kp_yaw_down')">−</button>
+        <div class="tune-val" id="pidKpYaw">1.50</div>
+        <button class="tune-btn" onmousedown="cmd('kp_yaw_up')" ontouchstart="cmd('kp_yaw_up')">+</button>
+      </div>
+    </div>
+
+    <!-- Kd Yaw -->
+    <div class="tune-row">
+      <div class="tune-label">Kd Yaw</div>
+      <div class="tune-controls">
+        <button class="tune-btn minus" onmousedown="cmd('kd_yaw_down')" ontouchstart="cmd('kd_yaw_down')">−</button>
+        <div class="tune-val" id="pidKdYaw">0.0100</div>
+        <button class="tune-btn" onmousedown="cmd('kd_yaw_up')" ontouchstart="cmd('kd_yaw_up')">+</button>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      <b>⚠ Warning:</b> Changing PID values affects flight stability.<br>
+      <b>Kp</b> = Proportional (reaction strength) · <b>Kd</b> = Derivative (damping)<br>
+      Defaults: Kp=0.80, Kd=0.0050, Kp_yaw=1.50, Kd_yaw=0.0100
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== Send command to drone via server proxy =====
+function cmd(c) {
+  fetch('/api/drone/control?cmd=' + c).catch(() => {});
+}
+
+// ===== Default PID values for change detection =====
+const DEFAULTS = { kp: 0.80, kd: 0.005, kp_yaw: 1.50, kd_yaw: 0.01 };
+
+// ===== Telemetry Polling =====
+let droneConnected = false;
+
+setInterval(() => {
+  fetch('/api/drone/data')
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) return;
+      droneConnected = true;
+      document.getElementById('dotDrone').className = 'status-dot on';
+
+      // HUD values
+      document.getElementById('vPitch').textContent = d.pitch.toFixed(1);
+      document.getElementById('vRoll').textContent = d.roll.toFixed(1);
+      document.getElementById('vThr').textContent = d.throttle;
+
+      // Trim values
+      if (d.trim) {
+        ['trim1','trim2','trim3','trim4'].forEach((id, i) => {
+          const el = document.getElementById(id);
+          el.textContent = d.trim[i];
+          el.classList.toggle('changed', d.trim[i] !== 0);
+        });
+      }
+
+      // PID values
+      if (d.pid) {
+        const update = (id, val, def, fmt) => {
+          const el = document.getElementById(id);
+          el.textContent = val.toFixed(fmt);
+          el.classList.toggle('changed', Math.abs(val - def) > 0.0001);
+        };
+        update('pidKp', d.pid.kp, DEFAULTS.kp, 2);
+        update('pidKd', d.pid.kd, DEFAULTS.kd, 4);
+        update('pidKpYaw', d.pid.kp_yaw, DEFAULTS.kp_yaw, 2);
+        update('pidKdYaw', d.pid.kd_yaw, DEFAULTS.kd_yaw, 4);
+      }
+    })
+    .catch(() => {
+      document.getElementById('dotDrone').className = 'status-dot off';
+    });
+}, 200);
+
+// ===== Keyboard: T = Emergency Stop =====
+document.addEventListener('keydown', e => {
+  if (e.key.toLowerCase() === 't') cmd('stop');
+});
+
+// ===== Auto-connect check =====
+fetch('/api/status').then(r => r.json()).then(d => {
+  if (d.drone_connected) {
+    droneConnected = true;
+    document.getElementById('dotDrone').className = 'status-dot on';
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>
